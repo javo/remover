@@ -1,9 +1,11 @@
 var fs      = require('fs'),
     join    = require('path').join,
+    exec    = require('child_process').exec,
     resolve = require('path').resolve;
 
 var backend = fs;
 var output  = null;
+var secure_bin = null;
 
 //////////////////////////////////////////////////////
 // helpers
@@ -96,10 +98,17 @@ Remover.prototype.walk = function(dir, remove_dir, cb) {
         if (stat.isDirectory()) { // recurse
           self.walk(path, true, done);
         } else {
-          unlink(path, function(err) {
-            if (!err) files_removed.push(path);
-            done(err);
-          });
+          if (secure_bin) {
+            exec(secure_bin + ' -dir ' + path, function(err) {
+              if (!err) files_removed.push(path);
+              done(err);
+            });
+          } else {
+            unlink(path, function(err) {
+              if (!err) files_removed.push(path);
+              done(err);
+            });
+          }
         }
       })
     })
@@ -111,6 +120,8 @@ function remove(path, opts, cb) {
   if (typeof opts == 'function') {
     cb = opts;
     opts = {};
+  } else {
+    secure_bin = opts;
   }
 
   var remover = new Remover(path);
