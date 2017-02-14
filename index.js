@@ -5,7 +5,7 @@ var fs      = require('fs'),
 
 var backend = fs;
 var output  = null;
-var secure_bin = null;
+var secure_cmd = null;
 
 //////////////////////////////////////////////////////
 // helpers
@@ -27,6 +27,14 @@ function unlink(file, cb) {
     if (!err) write('File removed: ' + file);
     cb(err);
   });
+}
+
+function secure_wipe(file, cb) {
+  var cmd = secure_cmd + '"' + file + '"';
+  exec(cmd, function(err) {
+    if (!err) write('File removed: ' + file);
+    cb(err);
+  })
 }
 
 //////////////////////////////////////////////////////
@@ -66,7 +74,6 @@ Remover.prototype.walk = function(dir, remove_dir, cb) {
     if (removed) {
       files_removed = files_removed.concat(removed);
     }
-
     --count || finished();
   }
 
@@ -98,8 +105,8 @@ Remover.prototype.walk = function(dir, remove_dir, cb) {
         if (stat.isDirectory()) { // recurse
           self.walk(path, true, done);
         } else {
-          if (secure_bin) {
-            exec(secure_bin + ' -dir ' + path, function(err) {
+          if (secure_cmd) {
+            secure_wipe(path, function(err) {
               if (!err) files_removed.push(path);
               done(err);
             });
@@ -121,7 +128,7 @@ function remove(path, opts, cb) {
     cb = opts;
     opts = {};
   } else {
-    secure_bin = opts;
+    secure_cmd = opts;
   }
 
   var remover = new Remover(path);
