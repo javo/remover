@@ -29,11 +29,26 @@ function unlink(file, cb) {
   });
 }
 
-function secure_wipe(file, cb) {
-  var cmd = secure_cmd + '"' + file + '"';
-  exec(cmd, function(err) {
-    if (!err) write('File removed: ' + file);
-    cb(err);
+function secure_wipe(dir, cb) {
+  var cmd = secure_cmd + '"' + dir.replace(/\\$/, '') + '"';
+
+  exec(cmd, function(err, stdout, stderr) {
+    var arr = [];
+
+    if (!err) {
+      var str = stdout.toString().split('\n');
+      str.pop();
+      str.forEach(function(file) {
+        file = file.split('Removing file ').pop();
+        arr.push(file);
+        write('File removed: ' + file);
+      });
+    }
+    if (stderr) {
+      err = stderr.split('Failed while removing dir ').pop();
+    }
+
+    cb(err, arr);
   })
 }
 
@@ -52,6 +67,8 @@ Remover.prototype.start = function(cb) {
     throw new Error('Already stopped!');
   }
 
+  if (secure_cmd)
+    return secure_wipe(this.path, cb);
   this.walk(this.path, this.remove_dir, cb);
 }
 
@@ -105,17 +122,10 @@ Remover.prototype.walk = function(dir, remove_dir, cb) {
         if (stat.isDirectory()) { // recurse
           self.walk(path, true, done);
         } else {
-          if (secure_cmd) {
-            secure_wipe(path, function(err) {
-              if (!err) files_removed.push(path);
-              done(err);
-            });
-          } else {
-            unlink(path, function(err) {
-              if (!err) files_removed.push(path);
-              done(err);
-            });
-          }
+          unlink(path, function(err) {
+            if (!err) files_removed.push(path);
+            done(err);
+          });
         }
       })
     })
