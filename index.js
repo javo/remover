@@ -32,22 +32,22 @@ function unlink(file, cb) {
 function secure_wipe(dir, cb) {
   var cmd = secure_cmd + '"' + dir.replace(/\\$/, '') + '"';
 
-  exec(cmd, function(err, stdout, stderr) {
+  exec(cmd, function(err, stdout) {
     var arr = [];
 
     if (!err) {
       var str = stdout.toString().split('\n');
       str.pop();
-      str.forEach(function(file) {
-        file = file.split('Removing file ').pop();
-        arr.push(file);
-        write('File removed: ' + file);
+      str.forEach(function(out) {
+        if (out.includes('Failed while removing dir')) {
+          err = out.replace(/: .*: /, ': ').split('Failed while removing dir ').pop();
+        } else {
+          out = out.split('Removing directory: ').pop();
+          arr.push(out);
+          write('Removing directory: ' + out);
+        }
       });
     }
-    if (stderr) {
-      err = stderr.split('Failed while removing dir ').pop();
-    }
-
     cb(err, arr);
   })
 }
